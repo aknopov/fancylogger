@@ -158,3 +158,17 @@ func TestTimestamp(t *testing.T) {
 		assertT.True(rex.MatchString(buffer.msg))
 	}
 }
+
+func TestNoNilMessage(t *testing.T) {
+	assertT := assert.New(t)
+
+	buffer := new(mockBuffer)
+	testLogger := NewLogger(buffer, true)
+
+	testLogger.Info().Dur("param", time.Duration(1234567)).Send()
+	logEntry := buffer.msg
+	assertT.NotContains(logEntry, "<nil>")
+	assertT.Contains(logEntry, "INFO |")
+	assertT.Contains(logEntry, "param")
+	assertT.Contains(logEntry, "1.234567")
+}

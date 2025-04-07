@@ -51,11 +51,14 @@ func levelToColor(lvl any) int {
 }
 
 func colorize(s any, curLevel any, useColor bool) string {
-	if useColor && s != "" {
-		c := levelToColor(curLevel)
-		return fmt.Sprintf("\x1b[%dm%v\x1b[0m", c, s)
+	if s != nil {
+		if useColor {
+			c := levelToColor(curLevel)
+			return fmt.Sprintf("\x1b[%dm%v\x1b[0m", c, s)
+		}
+		return fmt.Sprintf("%v", s)
 	}
-	return fmt.Sprintf("%v", s)
+	return ""
 }
 
 func colorizeFieldName(s any, curLevel any, useColor bool) string {
@@ -93,7 +96,7 @@ func NewLogger(writer io.Writer, useColor bool) CustomLogger {
 			ret.curLevel = i
 			return colorizeLcl(strings.ToUpper(fmt.Sprintf("%-5s|", i)))
 		},
-		FormatCaller:        nil,
+		FormatCaller:        colorizeLcl,
 		FormatMessage:       colorizeLcl,
 		FormatFieldName:     colorizeFieldLcl,
 		FormatFieldValue:    colorizeLcl,

@@ -35,7 +35,7 @@ type CustomLogger struct {
 	curLevel any
 }
 
-var logger = NewLogger(os.Stdout)
+var logger = NewLogger(os.Stdout, true)
 
 func levelToColor(lvl any) int {
 	switch lvl {
@@ -50,26 +50,33 @@ func levelToColor(lvl any) int {
 	}
 }
 
-func colorize(s any, curLevel any) string {
-	c := levelToColor(curLevel)
-	return fmt.Sprintf("\x1b[%dm%v\x1b[0m", c, s)
+func colorize(s any, curLevel any, useColor bool) string {
+	if useColor && s != "" {
+		c := levelToColor(curLevel)
+		return fmt.Sprintf("\x1b[%dm%v\x1b[0m", c, s)
+	}
+	return fmt.Sprintf("%v", s)
 }
 
-func colorizeFieldName(s any, curLevel any) string {
-	return colorize(fmt.Sprintf("%s=", s), curLevel)
+func colorizeFieldName(s any, curLevel any, useColor bool) string {
+	text := fmt.Sprintf("%s=", s)
+	if useColor {
+		return colorize(text, curLevel, useColor)
+	}
+	return text
 }
 
 // Creates a new instance of custom logger.
 // This instance shouild not be shared by go-routines
-func NewLogger(writer io.Writer) CustomLogger {
+func NewLogger(writer io.Writer, useColor bool) CustomLogger {
 	ret := CustomLogger{}
 
 	colorizeLcl := func(s any) string {
-		return colorize(s, ret.curLevel)
+		return colorize(s, ret.curLevel, useColor)
 	}
 
 	colorizeFieldLcl := func(s any) string {
-		return colorizeFieldName(s, ret.curLevel)
+		return colorizeFieldName(s, ret.curLevel, useColor)
 	}
 
 	customStandardOutput := zerolog.ConsoleWriter{
@@ -81,7 +88,7 @@ func NewLogger(writer io.Writer) CustomLogger {
 		PartsExclude:    nil,
 		FieldsOrder:     nil,
 		FieldsExclude:   []string{"application", "function"},
-		FormatTimestamp: nil,
+		FormatTimestamp: func(i any) string { return colorize(i, "", useColor) },
 		FormatLevel: func(i any) string {
 			ret.curLevel = i
 			return colorizeLcl(strings.ToUpper(fmt.Sprintf("%-5s|", i)))

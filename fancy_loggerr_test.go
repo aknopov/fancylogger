@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math/rand"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,7 +30,7 @@ var (
 	greenMarker  = []byte{27, 91, 51, 50, 109}
 	yellowMarker = []byte{27, 91, 51, 51, 109}
 	redMarker    = []byte{27, 91, 51, 49, 109}
-	tsRex, _ = regexp.Compile(TS_REGEX)
+	tsRex, _     = regexp.Compile(TS_REGEX)
 )
 
 func TestSampleOutput(t *testing.T) {
@@ -59,17 +60,17 @@ func TestColorize(t *testing.T) {
 func assertColor(t *testing.T, colorMarker []byte, lvl string) {
 	assertT := assert.New(t)
 
-	byteArr := []byte(colorize("", lvl))
+	byteArr := []byte(colorize("a", lvl, true))
 
 	assertT.Equal(colorMarker, byteArr[:5])
-	assertT.Equal(resetMarker, byteArr[5:])
+	assertT.Equal(resetMarker, byteArr[6:])
 }
 
-func TestPlainLogging(t *testing.T) {
+func TestNoErrorLogging(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer)
+	testLogger := NewLogger(buffer, true)
 
 	testLogger.logger.Info().
 		Str("Param", "String value").
@@ -82,13 +83,14 @@ func TestPlainLogging(t *testing.T) {
 	assertT.Contains(logEntry, "Here you are:")
 	assertT.Contains(logEntry, "Param=")
 	assertT.Contains(logEntry, "String value")
+	assertT.True(strings.HasSuffix(logEntry, "\n"))
 }
 
 func TestErrorLogging(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer)
+	testLogger := NewLogger(buffer, true)
 
 	testLogger.Error().
 		Err(errors.New("NFG")).
@@ -103,11 +105,29 @@ func TestErrorLogging(t *testing.T) {
 	assertT.Contains(logEntry, "NFG")
 }
 
+func TestNoColor(t *testing.T) {
+	assertT := assert.New(t)
+
+	buffer := new(mockBuffer)
+	testLogger := NewLogger(buffer, false)
+	testLogger.logger.Info().
+		Str("Param", "String value").
+		Msg("Here you are:")
+
+	logEntry := buffer.msg
+	assertT.NotContains(logEntry, "\x1b[")
+	assertT.True(tsRex.MatchString(logEntry))
+	assertT.Contains(logEntry, "Here you are:")
+	assertT.Contains(logEntry, "Param=")
+	assertT.Contains(logEntry, "String value")
+	assertT.True(strings.HasSuffix(logEntry, "\n"))
+}
+
 func TestAdapters(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer)
+	testLogger := NewLogger(buffer, true)
 
 	testLogger.Trace().Msg("")
 	assertT.Contains(buffer.msg, "TRACE")
@@ -129,7 +149,7 @@ func TestTimestamp(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer)
+	testLogger := NewLogger(buffer, true)
 	rex, _ := regexp.Compile(TS_REGEX)
 
 	for i := 0; i < 200; i++ {

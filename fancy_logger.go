@@ -3,7 +3,6 @@ package fancylogger
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -35,9 +34,16 @@ type CustomLogger struct {
 	curLevel any
 }
 
-var logger = NewLogger(os.Stdout, true)
+type ColorScheme int
 
-func levelToColor(lvl any) int {
+// Types of color scheme.
+const (
+	NoColor ColorScheme = iota
+	LiteFg
+	DarkFg
+)
+
+func levelToColor(lvl any, colorScheme ColorScheme) int {
 	switch lvl {
 	case "info":
 		return colorGreen
@@ -46,14 +52,17 @@ func levelToColor(lvl any) int {
 	case "error", "fatal", "panic":
 		return colorRed
 	default:
+		if colorScheme == LiteFg {
+			return colorWhite
+		}
 		return colorBlack
 	}
 }
 
-func colorize(s any, curLevel any, useColor bool) string {
+func colorize(s any, curLevel any, colorScheme ColorScheme) string {
 	if s != nil {
-		if useColor {
-			c := levelToColor(curLevel)
+		if colorScheme != NoColor {
+			c := levelToColor(curLevel, colorScheme)
 			return fmt.Sprintf("\x1b[%dm%v\x1b[0m", c, s)
 		}
 		return fmt.Sprintf("%v", s)
@@ -61,25 +70,29 @@ func colorize(s any, curLevel any, useColor bool) string {
 	return ""
 }
 
-func colorizeFieldName(s any, curLevel any, useColor bool) string {
+func colorizeFieldName(s any, curLevel any, colorScheme ColorScheme) string {
 	text := fmt.Sprintf("%s=", s)
-	if useColor {
-		return colorize(text, curLevel, useColor)
+	if colorScheme != NoColor {
+		return colorize(text, curLevel, colorScheme)
 	}
 	return text
 }
 
 // Creates a new instance of custom logger.
-// This instance shouild not be shared by go-routines
-func NewLogger(writer io.Writer, useColor bool) CustomLogger {
+//
+// Color scheme sets color of non-colored text:
+// 'LiteFg' uses teminal "white" color; 'DarkFg' uses "black" color
+//
+// This instance should not be shared by go-routines
+func NewLogger(writer io.Writer, colorScheme ColorScheme) CustomLogger {
 	ret := CustomLogger{}
 
 	colorizeLcl := func(s any) string {
-		return colorize(s, ret.curLevel, useColor)
+		return colorize(s, ret.curLevel, colorScheme)
 	}
 
 	colorizeFieldLcl := func(s any) string {
-		return colorizeFieldName(s, ret.curLevel, useColor)
+		return colorizeFieldName(s, ret.curLevel, colorScheme)
 	}
 
 	customStandardOutput := zerolog.ConsoleWriter{
@@ -91,7 +104,7 @@ func NewLogger(writer io.Writer, useColor bool) CustomLogger {
 		PartsExclude:    nil,
 		FieldsOrder:     nil,
 		FieldsExclude:   []string{"application", "function"},
-		FormatTimestamp: func(i any) string { return colorize(i, "", useColor) },
+		FormatTimestamp: func(i any) string { return colorize(i, "", colorScheme) },
 		FormatLevel: func(i any) string {
 			ret.curLevel = i
 			return colorizeLcl(strings.ToUpper(fmt.Sprintf("%-5s|", i)))

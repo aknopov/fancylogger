@@ -3,6 +3,7 @@ package fancylogger
 import (
 	"errors"
 	"math/rand"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -30,47 +31,80 @@ var (
 	greenMarker  = []byte{27, 91, 51, 50, 109}
 	yellowMarker = []byte{27, 91, 51, 51, 109}
 	redMarker    = []byte{27, 91, 51, 49, 109}
-	tsRex, _     = regexp.Compile(TS_REGEX)
+	whiteMarker  = []byte{27, 91, 51, 55, 109}
+	tsRex        = regexp.MustCompile(TS_REGEX)
 )
 
 func TestSampleOutput(t *testing.T) {
-	logger.Info().Msg("Hello log!")
+	lightLogger := NewLogger(os.Stdout, LiteFg)
+	lightLogger.Info().Msg("Hello log!")
+
+	darkLogger := NewLogger(os.Stdout, DarkFg)
+	darkLogger.Info().Msg("Hello log!")
 }
 
 func TestLevelToColor(t *testing.T) {
 	assertT := assert.New(t)
 
-	assertT.Equal(colorBlack, levelToColor("debug"))
-	assertT.Equal(colorRed, levelToColor("error"))
-	assertT.Equal(colorRed, levelToColor("panic"))
-	assertT.Equal(colorGreen, levelToColor("info"))
-	assertT.Equal(colorYellow, levelToColor("warn"))
-	assertT.Equal(colorBlack, levelToColor("whatever"))
+	tests := []struct {
+		level    string
+		scheme   ColorScheme
+		colorIdx int
+	}{
+		{"debug", DarkFg, colorBlack},
+		{"debug", LiteFg, colorWhite},
+		{"error", DarkFg, colorRed},
+		{"error", LiteFg, colorRed},
+		{"panic", DarkFg, colorRed},
+		{"panic", LiteFg, colorRed},
+		{"info", DarkFg, colorGreen},
+		{"info", LiteFg, colorGreen},
+		{"warn", DarkFg, colorYellow},
+		{"warn", LiteFg, colorYellow},
+		{"whatever", DarkFg, colorBlack},
+		{"whatever", LiteFg, colorWhite},
+	}
+
+	for _, tt := range tests {
+		assertT.Equal(tt.colorIdx, levelToColor(tt.level, tt.scheme))
+	}
 }
 
 func TestColorize(t *testing.T) {
-	assertColor(t, blackMarker, "debug")
-	assertColor(t, greenMarker, "info")
-	assertColor(t, yellowMarker, "warn")
-	assertColor(t, redMarker, "error")
-	assertColor(t, redMarker, "panic")
-	assertColor(t, redMarker, "fatal")
-}
-
-func assertColor(t *testing.T, colorMarker []byte, lvl string) {
 	assertT := assert.New(t)
 
-	byteArr := []byte(colorize("a", lvl, true))
+	tests := []struct {
+		level       string
+		scheme      ColorScheme
+		colorMarker []byte
+	}{
+		{"debug", DarkFg, blackMarker},
+		{"debug", LiteFg, whiteMarker},
+		{"info", DarkFg, greenMarker},
+		{"info", LiteFg, greenMarker},
+		{"warn", DarkFg, yellowMarker},
+		{"warn", LiteFg, yellowMarker},
+		{"error", DarkFg, redMarker},
+		{"error", LiteFg, redMarker},
+		{"panic", DarkFg, redMarker},
+		{"panic", LiteFg, redMarker},
+		{"fatal", DarkFg, redMarker},
+		{"fatal", LiteFg, redMarker},
+	}
 
-	assertT.Equal(colorMarker, byteArr[:5])
-	assertT.Equal(resetMarker, byteArr[6:])
+	for _, tt := range tests {
+		byteArr := []byte(colorize("a", tt.level, tt.scheme))
+
+		assertT.Equal(tt.colorMarker, byteArr[:5])
+		assertT.Equal(resetMarker, byteArr[6:])
+	}
 }
 
 func TestNoErrorLogging(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer, true)
+	testLogger := NewLogger(buffer, LiteFg)
 
 	testLogger.logger.Info().
 		Str("Param", "String value").
@@ -90,7 +124,7 @@ func TestErrorLogging(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer, true)
+	testLogger := NewLogger(buffer, LiteFg)
 
 	testLogger.Error().
 		Err(errors.New("NFG")).
@@ -109,7 +143,7 @@ func TestNoColor(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer, false)
+	testLogger := NewLogger(buffer, NoColor)
 	testLogger.logger.Info().
 		Str("Param", "String value").
 		Msg("Here you are:")
@@ -127,7 +161,7 @@ func TestAdapters(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer, true)
+	testLogger := NewLogger(buffer, LiteFg)
 
 	testLogger.Trace().Msg("")
 	assertT.Contains(buffer.msg, "TRACE")
@@ -149,13 +183,12 @@ func TestTimestamp(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer, true)
-	rex, _ := regexp.Compile(TS_REGEX)
+	testLogger := NewLogger(buffer, LiteFg)
 
 	for i := 0; i < 200; i++ {
 		time.Sleep(time.Duration(rand.Intn(10)) * time.Millisecond)
 		testLogger.Info().Msg("")
-		assertT.True(rex.MatchString(buffer.msg))
+		assertT.True(tsRex.MatchString(buffer.msg))
 	}
 }
 
@@ -163,7 +196,7 @@ func TestNoNilMessage(t *testing.T) {
 	assertT := assert.New(t)
 
 	buffer := new(mockBuffer)
-	testLogger := NewLogger(buffer, true)
+	testLogger := NewLogger(buffer, LiteFg)
 
 	testLogger.Info().Dur("param", time.Duration(1234567)).Send()
 	logEntry := buffer.msg

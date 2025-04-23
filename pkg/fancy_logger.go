@@ -29,6 +29,8 @@ const (
 	timeFacet = "2006-01-02T15:04:05.000"
 )
 
+// A CustomLogger is customization of "zerolog.Logger"
+// with entries that can be colored based on their logging level
 type CustomLogger struct {
 	logger   zerolog.Logger
 	curLevel any
@@ -59,19 +61,20 @@ func levelToColor(lvl any, colorScheme ColorScheme) int {
 	}
 }
 
-func colorize(s any, curLevel any, colorScheme ColorScheme) string {
-	if s != nil {
+func colorize(v any, curLevel any, colorScheme ColorScheme) string {
+	s, ok := v.(string)
+	if v != nil && !(ok && s == "") {
 		if colorScheme != NoColor {
 			c := levelToColor(curLevel, colorScheme)
-			return fmt.Sprintf("\x1b[%dm%v\x1b[0m", c, s)
+			return fmt.Sprintf("\x1b[%dm%v\x1b[0m", c, v)
 		}
-		return fmt.Sprintf("%v", s)
+		return fmt.Sprintf("%v", v)
 	}
 	return ""
 }
 
-func colorizeFieldName(s any, curLevel any, colorScheme ColorScheme) string {
-	text := fmt.Sprintf("%s=", s)
+func colorizeFieldName(v any, curLevel any, colorScheme ColorScheme) string {
+	text := fmt.Sprintf("%s=", v)
 	if colorScheme != NoColor {
 		return colorize(text, curLevel, colorScheme)
 	}

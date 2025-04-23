@@ -1,3 +1,4 @@
+// Packager fancylogger customized ZerLogger
 package fancylogger
 
 import (

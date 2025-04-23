@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	fancylogger "github.com/aknopov/fancylogger/pkg"
+	"github.com/aknopov/fancylogger"
 )
 
 func main() {

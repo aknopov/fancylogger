@@ -3,7 +3,6 @@ package fancylogger
 import (
 	"errors"
 	"math/rand"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -34,14 +33,6 @@ var (
 	whiteMarker  = []byte{27, 91, 51, 55, 109}
 	tsRex        = regexp.MustCompile(TS_REGEX)
 )
-
-func TestSampleOutput(t *testing.T) {
-	lightLogger := NewLogger(os.Stdout, LiteFg)
-	lightLogger.Info().Msg("Hello log!")
-
-	darkLogger := NewLogger(os.Stdout, DarkFg)
-	darkLogger.Info().Msg("Hello log!")
-}
 
 func TestLevelToColor(t *testing.T) {
 	assertT := assert.New(t)
@@ -97,6 +88,25 @@ func TestColorize(t *testing.T) {
 
 		assertT.Equal(tt.colorMarker, byteArr[:5])
 		assertT.Equal(resetMarker, byteArr[6:])
+	}
+}
+
+func TestNocolorForEmptyString(t *testing.T) {
+	assertT := assert.New(t)
+
+	tests := []struct {
+		val any
+		fg  ColorScheme
+	}{
+		{nil, DarkFg},
+		{nil, LiteFg},
+		{nil, NoColor},
+		{"", DarkFg},
+		{"", LiteFg},
+		{"", NoColor},
+	}
+	for _, tt := range tests {
+		assertT.Equal("", colorize(tt.val, "info", tt.fg))
 	}
 }
 

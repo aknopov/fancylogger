@@ -1,3 +1,7 @@
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/aknopov/fancylogger/go.yml)
+![Coveralls](https://img.shields.io/coverallsCoverage/github/aknopov/fancylogger)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 # Simple logger
 
 - Provides colorized or plain output on the console.
